@@ -1,0 +1,40 @@
+{
+	"schemaVersion": 1,
+	"id": "cobbleexport",
+	"version": "${version}",
+	"name": "Cobblemon Export",
+	"description": "Exports your Cobblemon Party and PC boxes to JSON format.",
+	"authors": [
+		"AlguemDaRua"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/cobbleexport/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [],
+		"client": [
+			{
+				"value": "alguemdarua.cobbleexport.CobbleExportClient",
+				"adapter": "kotlin"
+			}
+		]
+	},
+	"mixins": [
+		"cobbleexport.mixins.json",
+		{
+			"config": "cobbleexport.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.18.2",
+		"minecraft": "~1.21.1",
+		"java": ">=21",
+		"fabric-api": "*",
+		"fabric-language-kotlin": "*"
+	}
+}
