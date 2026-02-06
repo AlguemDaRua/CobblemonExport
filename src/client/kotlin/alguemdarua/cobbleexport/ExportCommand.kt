@@ -13,13 +13,13 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.client.MinecraftClient
 import net.minecraft.text.ClickEvent
 import net.minecraft.text.HoverEvent
+import net.minecraft.text.MutableText
 import net.minecraft.text.Text
 import net.minecraft.util.Formatting
 import java.io.File
 
 object ExportCommand {
 
-    // Pretty printing makes the JSON human-readable
     private val gson = GsonBuilder().setPrettyPrinting().create()
 
     fun register() {
@@ -27,24 +27,23 @@ object ExportCommand {
 
             val root = literal("cobble_export")
 
-            // --- BRANCH 1: PARTY ---
+            // --- BRANCH 1: HELP ---
+            root.then(literal("help").executes { ctx -> sendHelpMessage(ctx) })
+
+            // --- BRANCH 2: PARTY ---
             val partyNode = literal("party")
-                // Case A: /cobble_export party (Overwrites)
                 .executes { ctx -> exportParty(ctx, createNew = false) }
-                // Case B: /cobble_export party new (Creates new file)
                 .then(literal("new")
                     .executes { ctx -> exportParty(ctx, createNew = true) }
                 )
 
-            // --- BRANCH 2: BOX ---
+            // --- BRANCH 3: BOX ---
             val boxNode = literal("box")
-                .then(argument("boxNum", IntegerArgumentType.integer(1, 200)) // Support large servers
-                    // Case A: /cobble_export box <num> (Overwrites)
+                .then(argument("boxNum", IntegerArgumentType.integer(1, 200))
                     .executes { ctx ->
                         val boxNum = IntegerArgumentType.getInteger(ctx, "boxNum")
                         exportBox(ctx, boxNum, createNew = false)
                     }
-                    // Case B: /cobble_export box <num> new (Creates new file)
                     .then(literal("new")
                         .executes { ctx ->
                             val boxNum = IntegerArgumentType.getInteger(ctx, "boxNum")
@@ -60,13 +59,73 @@ object ExportCommand {
     }
 
     // =================================================================================================
+    //                                         HELP MENU
+    // =================================================================================================
+
+    private fun sendHelpMessage(ctx: CommandContext<FabricClientCommandSource>): Int {
+        val source = ctx.source
+
+        // Helper: Returns MutableText so we can chain styles later
+        fun txt(content: String, color: Formatting, bold: Boolean = false): MutableText {
+            val t = Text.literal(content).formatted(color)
+            if (bold) t.formatted(Formatting.BOLD)
+            return t
+        }
+
+        // Helper for clickable commands
+        fun cmd(command: String, desc: String): MutableText {
+            return Text.literal(" ➤ ")
+                .formatted(Formatting.DARK_GRAY)
+                .append(Text.literal(command).styled { style ->
+                    style.withColor(Formatting.YELLOW)
+                        .withClickEvent(ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, command))
+                        .withHoverEvent(HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal("Click to type")))
+                })
+                .append(Text.literal("\n     $desc").formatted(Formatting.GRAY))
+        }
+
+        val msg = Text.empty()
+
+        // --- HEADER ---
+        msg.append(Text.literal("\n▬▬▬▬▬▬▬▬▬▬ [ ").formatted(Formatting.DARK_GRAY))
+        msg.append(txt("Cobblemon Export", Formatting.AQUA, true))
+        msg.append(Text.literal(" ] ▬▬▬▬▬▬▬▬▬▬\n").formatted(Formatting.DARK_GRAY))
+
+        // --- INTRO ---
+        msg.append(txt("\nHello! This mod was made by ", Formatting.GRAY))
+        msg.append(txt("AlguemDaRua", Formatting.GOLD, true))
+        msg.append(txt(".\nIt's a small mod I created to access Pokemon info without having to check them one by one. I hope you enjoy it!\nPlease leave feedback so I can make it better. Thanks!\n\n", Formatting.GRAY).formatted(Formatting.ITALIC))
+
+        // --- COMMANDS ---
+        msg.append(txt("Available Commands:\n", Formatting.WHITE, true))
+
+        // Party
+        msg.append(cmd("/cobble_export party", "Overwrites the 'party_export.json' file."))
+        msg.append(Text.literal("\n"))
+        msg.append(cmd("/cobble_export party new", "Creates a NEW file (e.g. 'party_export_1.json')."))
+        msg.append(Text.literal("\n"))
+
+        // Box
+        msg.append(cmd("/cobble_export box <num>", "Exports specific PC box (Overwrites file)."))
+        msg.append(Text.literal("\n"))
+        msg.append(cmd("/cobble_export box <num> new", "Exports PC box to a NEW file."))
+
+        // --- FOOTER ---
+        msg.append(txt("\n\nFiles are saved in: ", Formatting.WHITE))
+        msg.append(txt(".minecraft/cobblemon_exports/", Formatting.GREEN))
+        msg.append(Text.literal("\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬").formatted(Formatting.DARK_GRAY))
+
+        source.sendFeedback(msg)
+        return Command.SINGLE_SUCCESS
+    }
+
+    // =================================================================================================
     //                                         LOGIC HANDLERS
     // =================================================================================================
 
     private fun exportParty(ctx: CommandContext<FabricClientCommandSource>, createNew: Boolean): Int {
         val rawParty = CobblemonClient.storage.party
 
-        // Cast to Iterable to avoid Kotlin ambiguity errors with Cobblemon's custom classes
         val safeIterable = rawParty as Iterable<*>
         val exportData = extractPokemonFromList(safeIterable)
 
@@ -81,7 +140,6 @@ object ExportCommand {
 
     private fun exportBox(ctx: CommandContext<FabricClientCommandSource>, boxNum: Int, createNew: Boolean): Int {
         try {
-            // 1. Retrieve the PC Boxes using our helper (handles the Reflection logic)
             val boxesList = getPcBoxesFromStorage()
 
             if (boxesList == null) {
@@ -89,14 +147,12 @@ object ExportCommand {
                 return 0
             }
 
-            // 2. Validate Box Number
             val index = boxNum - 1
             if (index < 0 || index >= boxesList.size) {
                 sendError(ctx, "Box $boxNum does not exist (Max: ${boxesList.size}).")
                 return 0
             }
 
-            // 3. Extract Pokemon
             val targetBox = boxesList[index] as Iterable<*>
             val exportData = extractPokemonFromList(targetBox)
 
@@ -115,9 +171,6 @@ object ExportCommand {
         }
     }
 
-    /**
-     * Helper to loop through a generic list and map any Pokemon found.
-     */
     private fun extractPokemonFromList(list: Iterable<*>): List<Map<String, Any?>> {
         val data = mutableListOf<Map<String, Any?>>()
         for (obj in list) {
@@ -132,27 +185,18 @@ object ExportCommand {
     //                                      REFLECTION HELPERS
     // =================================================================================================
 
-    /**
-     * Uses Reflection to safely grab the Box List from the internal Client Storage.
-     * Handles the 'pcStores' Map logic found in Cobblemon 1.7.
-     */
     private fun getPcBoxesFromStorage(): List<*>? {
         val storage = CobblemonClient.storage
         val storageClass = storage.javaClass
 
-        // 1. Access the 'pcStores' Map (UUID -> ClientPC)
         val storesField = storageClass.getDeclaredField("pcStores")
         storesField.isAccessible = true
         val pcStoresMap = storesField.get(storage) as Map<*, *>
 
-        // 2. Find the correct PC for this player
         val player = MinecraftClient.getInstance().player ?: return null
 
-        // Try getting by UUID, otherwise fallback to the first available PC (Robustness)
         val myPC = pcStoresMap[player.uuid] ?: pcStoresMap.values.firstOrNull() ?: return null
 
-        // 3. Find the 'boxes' list inside the ClientPC object
-        // We scan fields to find the list, handling potential name changes/obfuscation
         val pcFields = myPC.javaClass.declaredFields
 
         val boxesField = pcFields.find { it.name == "boxes" }
@@ -174,10 +218,8 @@ object ExportCommand {
         val exportDir = File(runDir, "cobblemon_exports")
         if (!exportDir.exists()) exportDir.mkdirs()
 
-        // Determine filename
         val file: File
         if (createNew) {
-            // Incremental: Find the next available number (box_1_export_1.json, box_1_export_2.json)
             var i = 1
             var candidate = File(exportDir, "${baseName}_$i.json")
             while (candidate.exists()) {
@@ -186,14 +228,12 @@ object ExportCommand {
             }
             file = candidate
         } else {
-            // Overwrite: Just use the base name
             file = File(exportDir, "$baseName.json")
         }
 
         try {
             file.writeText(gson.toJson(data))
 
-            // Create a clickable, hoverable success message
             val clickableText = Text.literal("§e[OPEN FILE]")
                 .styled { style ->
                     style.withColor(Formatting.YELLOW)
@@ -204,9 +244,9 @@ object ExportCommand {
                 }
 
             val message = Text.literal("§a[CobbleExport] Successfully saved to ")
-                .append(Text.literal(file.name).formatted(Formatting.GRAY)) // Show filename
+                .append(Text.literal(file.name).formatted(Formatting.GRAY))
                 .append(Text.literal(" "))
-                .append(clickableText) // Add the button
+                .append(clickableText)
 
             source.sendFeedback(message)
 
