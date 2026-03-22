@@ -2,7 +2,6 @@ package alguemdarua.cobbleexport
 
 import com.cobblemon.mod.common.client.CobblemonClient
 import com.cobblemon.mod.common.pokemon.Pokemon
-import com.google.gson.GsonBuilder
 import com.mojang.brigadier.Command
 import com.mojang.brigadier.arguments.IntegerArgumentType
 import com.mojang.brigadier.context.CommandContext
@@ -19,8 +18,6 @@ import net.minecraft.util.Formatting
 import java.io.File
 
 object ExportCommand {
-
-    private val gson = GsonBuilder().setPrettyPrinting().create()
 
     fun register() {
         ClientCommandRegistrationCallback.EVENT.register { dispatcher, _ ->
@@ -134,7 +131,7 @@ object ExportCommand {
             return 0
         }
 
-        saveJson(ctx.source, "party_export", exportData, createNew)
+        saveShowdown(ctx.source, "party_export", exportData, createNew)
         return Command.SINGLE_SUCCESS
     }
 
@@ -161,7 +158,7 @@ object ExportCommand {
                 return 0
             }
 
-            saveJson(ctx.source, "box_${boxNum}_export", exportData, createNew)
+            saveShowdown(ctx.source, "box_${boxNum}_export", exportData, createNew)
             return Command.SINGLE_SUCCESS
 
         } catch (e: Exception) {
@@ -171,11 +168,11 @@ object ExportCommand {
         }
     }
 
-    private fun extractPokemonFromList(list: Iterable<*>): List<Map<String, Any?>> {
-        val data = mutableListOf<Map<String, Any?>>()
+    private fun extractPokemonFromList(list: Iterable<*>): List<String> {
+        val data = mutableListOf<String>()
         for (obj in list) {
             if (obj != null && obj is Pokemon) {
-                data.add(PokemonMapper.toMap(obj))
+                data.add(PokemonMapper.toShowdown(obj))
             }
         }
         return data
@@ -213,7 +210,7 @@ object ExportCommand {
     //                                      FILE & CHAT UTILS
     // =================================================================================================
 
-    private fun saveJson(source: FabricClientCommandSource, baseName: String, data: Any, createNew: Boolean) {
+    private fun saveShowdown(source: FabricClientCommandSource, baseName: String, data: List<String>, createNew: Boolean) {
         val runDir = MinecraftClient.getInstance().runDirectory
         val exportDir = File(runDir, "cobblemon_exports")
         if (!exportDir.exists()) exportDir.mkdirs()
@@ -221,18 +218,19 @@ object ExportCommand {
         val file: File
         if (createNew) {
             var i = 1
-            var candidate = File(exportDir, "${baseName}_$i.json")
+            var candidate = File(exportDir, "${baseName}_$i.txt")
             while (candidate.exists()) {
                 i++
-                candidate = File(exportDir, "${baseName}_$i.json")
+                candidate = File(exportDir, "${baseName}_$i.txt")
             }
             file = candidate
         } else {
-            file = File(exportDir, "$baseName.json")
+            file = File(exportDir, "$baseName.txt")
         }
 
         try {
-            file.writeText(gson.toJson(data))
+            // Join each Pokémon block with a blank line separator (Showdown convention)
+            file.writeText(data.joinToString("\n\n"))
 
             val clickableText = Text.literal("§e[OPEN FILE]")
                 .styled { style ->
