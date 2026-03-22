@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-    <b>Export your Pokémon data to JSON effortlessly.</b>
+    <b>Export your Pokémon data to Pokémon Showdown format effortlessly.</b>
     <br>
     <a href="LICENSE">MIT License</a> | <a href="#">Fabric 1.21.1</a> | <a href="#">Client-Side</a>
 </p>
@@ -23,11 +23,13 @@ I hope you like it and enjoy using it! Please leave feedback so I can make it ev
 ## ✨ Features
 
 *   **Export Party:** Instantly dump your current team's data to a file.
-*   **Export PC Boxes:** Export entire boxes (up to box 200) with a single command. **NOTE: Not all boxes at one, right now**
-*   **Detailed JSON:** The output includes UUIDs, Species, Stats, IVs, EVs, Moves, Nature, Ability, and more.
+*   **Export PC Boxes:** Export entire boxes (up to box 200) with a single command.
+*   **Showdown Compatible:** Clean text output that can be pasted directly into **Pokémon Showdown** teambuilder.
+*   **Perfect Accuracy:** Handles **Nature Mints** (Effective Nature) and **IV Candies/Hyper Training** (Effective IVs) correctly.
+*   **Clean Output:** No useless UUIDs, catch balls, or HP values—just what you need for competitive play.
 *   **Two Modes:**
-    *   **Overwrite:** Keep a single clean file (e.g., `party_export.json`).
-    *   **New/Snapshot:** Create history files (e.g., `party_export_1.json`, `party_export_2.json`).
+    *   **Overwrite:** Keep a single clean file (e.g., `party_export.txt`).
+    *   **New/Snapshot:** Create history files (e.g., `party_export_1.txt`, `party_export_2.txt`).
 *   **Click-to-Open:** Once exported, click the filename in the chat to instantly open the file on your computer!
 *   **Client-Side Only:** Works on multiplayer servers without needing to be installed on the server.
 
@@ -49,17 +51,17 @@ All commands start with `/cobble_export`. You can also use the in-game help menu
 ### 1. Export Party
 Exports the 6 Pokémon currently in your team.
 ```mcfunction
-# Overwrites 'party_export.json'
+# Overwrites 'party_export.txt'
 /cobble_export party
 
-# Creates a new file (e.g., 'party_export_1.json')
+# Creates a new file (e.g., 'party_export_1.txt')
 /cobble_export party new
 ```
 
 ### 2. Export PC Box
 Exports all Pokémon in a specific PC box.
 ```mcfunction
-# Exports Box 1 to 'box_1_export.json'
+# Exports Box 1 to 'box_1_export.txt'
 /cobble_export box 1
 
 # Exports Box 5 to a new numbered file
@@ -87,40 +89,19 @@ This caches the box data to your client so the mod can read it!
 Files are saved in your Minecraft folder at:
 `/.minecraft/cobblemon_exports/`
 
-**Example JSON Output:**
-```json
-[
-  {
-    "species": "mudkip",
-    "nickname": "Mudkip",
-    "level": 10,
-    "shiny": false,
-    "gender": "MALE",
-    "ability": "torrent",
-    "nature": "adamant",
-    "stats": {
-      "hp": 30,
-      "atk": 18,
-      "def": 12,
-      "spa": 10,
-      "spd": 12,
-      "spe": 14
-    },
-    "ivs": {
-      "hp": 31,
-      "atk": 31,
-      "def": 20,
-      "spa": 5,
-      "spd": 25,
-      "spe": 31
-    },
-    "moves": [
-      "tackle",
-      "growl",
-      "water_gun"
-    ]
-  }
-]
+**Example Showdown Output:**
+```text
+Mudkip (M) @ Leftovers
+Ability: Torrent
+Tera Type: Water
+Level: 10
+Naive Nature
+EVs: 0 HP / 0 Atk / 0 Def / 0 SpA / 0 SpD / 0 Spe
+IVs: 16 HP / 30 Atk / 21 Def / 23 SpA / 16 SpD / 17 Spe
+- Rock Throw
+- Rock Smash
+- Water Gun
+- Foresight
 ```
 
 ## 📥 Installation
